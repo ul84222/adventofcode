@@ -27,9 +27,6 @@ func main() {
 	slices.Sort(l)
 	slices.Sort(r)
 
-	fmt.Println("l", l)
-	fmt.Println("r", r)
-
 	result := 0
 	for i := 0; i < len(l); i++ {
 		diff := l[i] - r[i]
@@ -39,7 +36,38 @@ func main() {
 			result -= diff
 		}
 	}
-	fmt.Println("Result: ", result)
+	fmt.Println("Part 1: result: ", result)
+
+	score := 0
+	indexL := 0
+	indexR := 0
+	appearCount := 0
+	for indexL < len(l) && indexR < len(r) {
+		if l[indexL] == r[indexR] {
+			appearCount++
+			indexR++
+		} else {
+			score += multiplier(indexL, l) * appearCount * l[indexL]
+			appearCount = 0
+			if l[indexL] > r[indexR] {
+				indexR++
+			} else {
+				indexL++
+			}
+		}
+	}
+	if appearCount != 0 {
+		score += appearCount * l[indexL]
+	}
+	fmt.Println("Part 2: score: ", score)
+}
+
+func multiplier(index int, slice []int) int {
+	multiplier := 1
+	for i := index + 1; i < len(slice) && slice[i] == slice[index]; i++ {
+		multiplier++
+	}
+	return multiplier
 }
 
 func parse(input string) ([]int, []int, error) {
