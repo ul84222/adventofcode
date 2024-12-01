@@ -21,7 +21,7 @@ func main() {
 	}
 
 	if len(l) != len(r) {
-		panic("slies have different lengths")
+		panic("slises have different lengths")
 	}
 
 	slices.Sort(l)
@@ -87,12 +87,12 @@ func parse(input string) ([]int, []int, error) {
 
 		l, err = parseAndAppend(parts[0], l)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("error parsing line %q: %w", line, err)
 		}
 
 		r, err = parseAndAppend(parts[1], r)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("error parsing line %q: %w", line, err)
 		}
 	}
 	return l, r, nil
