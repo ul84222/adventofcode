@@ -19,14 +19,11 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("Levels: ", levels)
-
 	safeLavels := 0
 	for _, level := range levels {
 		if result, error := isValidLevel(level); error != nil {
 			panic(error)
 		} else if result {
-			fmt.Println("Valid level: ", level)
 			safeLavels++
 		}
 	}
