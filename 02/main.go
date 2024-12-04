@@ -21,21 +21,41 @@ func main() {
 
 	safeLavels := 0
 	for _, level := range levels {
-		if result, error := isValidLevel(level); error != nil {
+		if safe, error := isSafeLevel(level); error != nil {
 			panic(error)
-		} else if result {
+		} else if safe {
 			safeLavels++
 		}
 	}
 	fmt.Println("Result: ", safeLavels)
 }
 
-func isValidLevel(level []int) (bool, error) {
+func isSafeLevel(level []int) (bool, error) {
+	safe, unsafeCell, err := findUnsafeCell(level)
+	if safe {
+		return safe, err
+	}
+
+	safe, _, err = findUnsafeCell(cut(level, 0))
+	if safe {
+		return safe, err
+	}
+
+	safe, _, err = findUnsafeCell(cut(level, unsafeCell-1))
+	if safe {
+		return safe, err
+	}
+
+	safe, _, err = findUnsafeCell(cut(level, unsafeCell))
+	return safe, err
+}
+
+func findUnsafeCell(level []int) (bool, int, error) {
 	if len(level) == 0 {
-		return false, fmt.Errorf("unexpected level length. length must not be zero")
+		return false, 0, fmt.Errorf("unexpected level length. length must not be zero")
 	}
 	if len(level) == 1 {
-		return true, nil
+		return true, 0, nil
 	}
 
 	ascending := true
@@ -52,13 +72,20 @@ func isValidLevel(level []int) (bool, error) {
 		}
 
 		if diff < 1 {
-			return false, nil
+			return false, i, nil
 		}
 		if diff > 3 {
-			return false, nil
+			return false, i, nil
 		}
 	}
-	return true, nil
+	return true, 0, nil
+}
+
+func cut(slice []int, ind int) []int {
+	result := make([]int, 0, len(slice)-1)
+	result = append(result, slice[0:ind]...)
+	result = append(result, slice[ind+1:]...)
+	return result
 }
 
 func parse(input string) ([][]int, error) {
