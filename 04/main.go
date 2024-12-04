@@ -14,24 +14,29 @@ func main() {
 	input := string(content)
 
 	field := parse(input)
-	foundWords := 0
+	xmasCount := 0
+	shapedXmasCount := 0
 	for i, _ := range field {
 		for j, _ := range field[i] {
 			if isHorizontalHit(field, i, j) {
-				foundWords++
+				xmasCount++
 			}
 			if isVerticalHit(field, i, j) {
-				foundWords++
+				xmasCount++
 			}
 			if isDownDiagonalHit(field, i, j) {
-				foundWords++
+				xmasCount++
 			}
 			if isUpDiagonalHit(field, i, j) {
-				foundWords++
+				xmasCount++
+			}
+			if isShapedXmas(field, i, j) {
+				shapedXmasCount++
 			}
 		}
 	}
-	fmt.Println("Found words: ", foundWords)
+	fmt.Println("Found xmas: ", xmasCount)
+	fmt.Println("Found shaped xmas: ", shapedXmasCount)
 }
 
 func isHorizontalHit(field [][]rune, i int, j int) bool {
@@ -84,6 +89,29 @@ func isUpDiagonalHit(field [][]rune, i int, j int) bool {
 		return true
 	}
 	return false
+}
+
+func isShapedXmas(field [][]rune, i int, j int) bool {
+	if i+2 >= len(field) || j+2 >= len(field[i]) {
+		return false
+	}
+
+	leftMatch := false
+	if field[i][j] == 'M' && field[i+1][j+1] == 'A' && field[i+2][j+2] == 'S' {
+		leftMatch = true
+	}
+	if field[i][j] == 'S' && field[i+1][j+1] == 'A' && field[i+2][j+2] == 'M' {
+		leftMatch = true
+	}
+
+	rightMatch := false
+	if field[i][j+2] == 'M' && field[i+1][j+1] == 'A' && field[i+2][j] == 'S' {
+		rightMatch = true
+	}
+	if field[i][j+2] == 'S' && field[i+1][j+1] == 'A' && field[i+2][j] == 'M' {
+		rightMatch = true
+	}
+	return leftMatch && rightMatch
 }
 
 func parse(input string) [][]rune {
