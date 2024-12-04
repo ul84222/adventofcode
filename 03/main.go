@@ -16,10 +16,20 @@ func main() {
 	fmt.Println("input: ", input)
 	runes := []rune(input)
 	result := 0
+	enabled := true
 	for i := 0; i < len(runes); {
-		readResult, next := read(runes, i)
-		result += readResult
-		i = next
+		if isMatch(runes, i, "do()") {
+			enabled = true
+		} else if isMatch(runes, i, "don't()") {
+			enabled = false
+		}
+		if enabled {
+			readResult, next := read(runes, i)
+			result += readResult
+			i = next
+		} else {
+			i++
+		}
 	}
 	fmt.Println("Result: ", result)
 }
@@ -43,6 +53,18 @@ func read(input []rune, curr int) (int, int) {
 	result := left * right
 	fmt.Printf("'%s' -> %d\n", string(input[curr:pointer+1]), result)
 	return result, pointer + 1
+}
+
+func isMatch(input []rune, curr int, word string) bool {
+	if curr+len(word) > len(input) {
+		return false
+	}
+	for i, char := range word {
+		if input[curr+i] != char {
+			return false
+		}
+	}
+	return true
 }
 
 func readNumber(input []rune, delimiter rune, curr int) (int, int, error) {
