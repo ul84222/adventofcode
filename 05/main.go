@@ -24,18 +24,28 @@ func main() {
 		panic(err)
 	}
 
-	result := 0
+	resultPart1 := 0
+	resultPart2 := 0
 	for _, update := range updates {
 		if test(update, rules) {
 			median, err := median(update)
 			if err != nil {
 				panic(err)
 			}
-			result += median
+			resultPart1 += median
+		} else {
+			fixedUpdate := fixUpdate(update, rules)
+			median, err := median(fixedUpdate)
+			if err != nil {
+				panic(err)
+			}
+			resultPart2 += median
 		}
+
 	}
 
-	fmt.Println("Result: ", result)
+	fmt.Println("Result part 1: ", resultPart1)
+	fmt.Println("Result part 2: ", resultPart2)
 }
 
 func test(update []int, rules map[int][]Rule) bool {
@@ -51,6 +61,45 @@ func test(update []int, rules map[int][]Rule) bool {
 	}
 
 	return true
+}
+
+func fixUpdate(update []int, rules map[int][]Rule) []int {
+	seen := make(map[int]bool)
+	fixed := make([]int, 0, len(update))
+
+	shouldBeBeforePages := make(map[int]bool)
+	for _, page := range update {
+		clear(shouldBeBeforePages)
+
+		for _, rule := range rules[page] {
+			if rule.Left == page && seen[rule.Right] {
+				shouldBeBeforePages[rule.Right] = true
+			}
+		}
+		seen[page] = true
+		fixed = insertPage(fixed, page, shouldBeBeforePages)
+	}
+	return fixed
+}
+
+func insertPage(dest []int, val int, before map[int]bool) []int {
+	if len(before) == 0 {
+		return append(dest, val)
+	}
+
+	cutInd := -1
+	for i, val := range dest {
+		if before[val] {
+			cutInd = i
+			break
+		}
+	}
+
+	var result []int
+	result = append(result, dest[0:cutInd]...)
+	result = append(result, val)
+	result = append(result, dest[cutInd:]...)
+	return result
 }
 
 func median(update []int) (int, error) {
