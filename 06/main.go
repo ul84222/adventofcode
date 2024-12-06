@@ -14,49 +14,90 @@ func main() {
 	}
 	input := string(content)
 	historianMap := parse(input)
-
-	visited := 0
-	visitedMap := make(map[string]bool)
-
 	currI, currJ := findCurrentPosition(historianMap)
 	currDirection := "u"
-	for currI >= 0 && currI < len(historianMap) && currJ >= 0 && currJ < len(historianMap[currI]) {
-		roomKey := strconv.Itoa(currI) + "_" + strconv.Itoa(currJ)
-		if !visitedMap[roomKey] {
-			visited++
-			historianMap[currI][currJ] = 'X'
-			visitedMap[roomKey] = true
-		}
 
-		if currDirection == "u" {
+	visited, possibleObstructionCount, loop := traverse(historianMap, currI, currJ, currDirection, false)
+
+	fmt.Println("Visited: ", visited)
+	fmt.Println("Possible obstructions: ", possibleObstructionCount)
+	fmt.Println("Loop: ", loop)
+}
+
+func traverse(historianMap [][]rune, currI int, currJ int, currDirection string, test bool) (int, int, bool) {
+	visited := 0
+	visitedMap := make(map[string]string)
+	obstructionMap := make(map[string]bool)
+	possibleObstructions := 0
+
+	for currI >= 0 && currI < len(historianMap) && currJ >= 0 && currJ < len(historianMap[currI]) {
+		roomKey := createKey(currI, currJ)
+		if visitedMap[roomKey] == "" {
+			visited++
+		} else if strings.Contains(visitedMap[roomKey], currDirection) {
+			return visited, possibleObstructions, true
+		}
+		if !test {
+			historianMap[currI][currJ] = 'X'
+		}
+		visitedMap[roomKey] += currDirection
+
+		switch currDirection {
+		case "u":
 			if currI == 0 || historianMap[currI-1][currJ] != '#' {
+				if !test && currI != 0 && historianMap[currI-1][currJ] != 'X' {
+					historianMap[currI-1][currJ] = '#'
+					if _, _, loop := traverse(historianMap, currI, currJ, currDirection, true); loop {
+						possibleObstructions++
+						obstructionMap[createKey(currI-1, currJ)] = true
+					}
+					historianMap[currI-1][currJ] = 'X'
+				}
 				currI--
 			} else {
 				currDirection = "r"
 				continue
 			}
-		}
-
-		if currDirection == "r" {
+		case "r":
 			if currJ >= len(historianMap[currI])-1 || historianMap[currI][currJ+1] != '#' {
+				if !test && currJ < len(historianMap[currI])-1 && historianMap[currI][currJ+1] != 'X' {
+					historianMap[currI][currJ+1] = '#'
+					if _, _, loop := traverse(historianMap, currI, currJ, currDirection, true); loop {
+						possibleObstructions++
+						obstructionMap[createKey(currI, currJ+1)] = true
+					}
+					historianMap[currI][currJ+1] = 'X'
+				}
 				currJ++
 			} else {
 				currDirection = "d"
 				continue
 			}
-		}
-
-		if currDirection == "d" {
+		case "d":
 			if currI >= len(historianMap)-1 || historianMap[currI+1][currJ] != '#' {
+				if !test && currI < len(historianMap)-1 && historianMap[currI+1][currJ] != 'X' {
+					historianMap[currI+1][currJ] = '#'
+					if _, _, loop := traverse(historianMap, currI, currJ, currDirection, true); loop {
+						possibleObstructions++
+						obstructionMap[createKey(currI+1, currJ)] = true
+					}
+					historianMap[currI+1][currJ] = 'X'
+				}
 				currI++
 			} else {
 				currDirection = "l"
 				continue
 			}
-		}
-
-		if currDirection == "l" {
+		case "l":
 			if currJ == 0 || historianMap[currI][currJ-1] != '#' {
+				if !test && currJ > 0 && historianMap[currI][currJ-1] != 'X' {
+					historianMap[currI][currJ-1] = '#'
+					if _, _, loop := traverse(historianMap, currI, currJ, currDirection, true); loop {
+						possibleObstructions++
+						obstructionMap[createKey(currI, currJ-1)] = true
+					}
+					historianMap[currI][currJ-1] = 'X'
+				}
 				currJ--
 			} else {
 				currDirection = "u"
@@ -64,7 +105,11 @@ func main() {
 			}
 		}
 	}
-	fmt.Println("Visited: ", visited)
+	return visited, len(obstructionMap), false
+}
+
+func createKey(i int, j int) string {
+	return strconv.Itoa(i) + "_" + strconv.Itoa(j)
 }
 
 func printMap(historianMap [][]rune) {
