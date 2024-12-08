@@ -42,7 +42,13 @@ func verifyEquation(left int, right []int, target int) bool {
 	if len(right) == 0 {
 		return left == target
 	}
-	return verifyEquation(left*right[0], right[1:], target) || verifyEquation(left+right[0], right[1:], target)
+	concat, err := strconv.Atoi(strconv.Itoa(left) + strconv.Itoa(right[0]))
+	if err != nil {
+		panic(err)
+	}
+	return verifyEquation(left*right[0], right[1:], target) ||
+		verifyEquation(left+right[0], right[1:], target) ||
+		verifyEquation(concat, right[1:], target)
 }
 
 func parseEquations(input string) ([]Equation, error) {
