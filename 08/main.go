@@ -30,7 +30,7 @@ func main() {
 		}
 	}
 
-	antinodes := make(map[Pair]bool)
+	antinodes := make(map[Pair]int)
 	boundary := Pair{len(antennas), len(antennas[0])}
 	for _, group := range groups {
 		findAntinodes(group, boundary, antinodes)
@@ -38,24 +38,31 @@ func main() {
 	fmt.Println("Result: ", len(antinodes))
 }
 
-func findAntinodes(antennas []Pair, boundary Pair, dest map[Pair]bool) {
-	propose := func(i int, j int) {
+func findAntinodes(antennas []Pair, boundary Pair, dest map[Pair]int) {
+	propose := func(i int, j int) bool {
 		if i >= 0 && j >= 0 && i < boundary.I && j < boundary.J {
-			dest[Pair{i, j}] = true
+			dest[Pair{i, j}]++
+			return true
+		} else {
+			return false
 		}
 	}
+	apply := func(i int, j int, stepI int, stepJ int) {
+		posI := i
+		posJ := j
+		for ; propose(posI, posJ); posI, posJ = posI+stepI, posJ+stepJ {
+		}
+	}
+
 	for i := 0; i < len(antennas)-1; i++ {
 		for j := i + 1; j < len(antennas); j++ {
 			left := antennas[i]
 			right := antennas[j]
 
-			posI := left.I + left.I - right.I
-			posJ := left.J + left.J - right.J
-			propose(posI, posJ)
-
-			posI = right.I + right.I - left.I
-			posJ = right.J + right.J - left.J
-			propose(posI, posJ)
+			stepI := left.I - right.I
+			stepJ := left.J - right.J
+			apply(left.I, left.J, stepI, stepJ)
+			apply(right.I, right.J, -stepI, -stepJ)
 		}
 	}
 }
