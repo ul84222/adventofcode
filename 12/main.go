@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -23,7 +24,8 @@ func main() {
 			regions.chooseFor(plot, pair).add(pair, puzzle)
 		}
 	}
-	fmt.Println("Cost:", regions.cost())
+	fmt.Println("Cost V1:", regions.cost())
+	fmt.Println("Cost V2:", regions.costV2())
 	elapsed := time.Since(start)
 	fmt.Println("Elapsed:", elapsed)
 }
@@ -92,8 +94,22 @@ func (r Regions) cost() int {
 	return cost
 }
 
+func (r Regions) costV2() int {
+	cost := 0
+	for _, regions := range r.regions {
+		for _, region := range regions {
+			cost += region.costV2()
+		}
+	}
+	return cost
+}
+
 func (r Region) cost() int {
 	return r.perimeter() * len(r.plots)
+}
+
+func (r Region) costV2() int {
+	return r.sidesCount() * len(r.plots)
 }
 
 func (r Region) perimeter() int {
@@ -113,6 +129,74 @@ func (r Region) perimeter() int {
 		}
 	}
 	return p
+}
+
+func (r Region) sidesCount() int {
+	sides := make(map[string]bool)
+	hist := make(map[string]bool)
+	mark := func(direction string, i int, j int) bool {
+		key := ""
+		rail := 0
+		switch direction {
+		case "u":
+			key = "u" + strconv.Itoa(i)
+			rail = j
+		case "d":
+			key = "d" + strconv.Itoa(i)
+			rail = j
+		case "l":
+			key = "l" + strconv.Itoa(j)
+			rail = i
+		case "r":
+			key = "r" + strconv.Itoa(j)
+			rail = i
+		}
+
+		sides[key] = true
+		hist[key+string(rail)] = true
+		return !hist[key+string(rail-1)] && !hist[key+string(rail+1)]
+	}
+	count := 0
+	maxI := 0
+	maxJ := 0
+	for pair, _ := range r.plots {
+		if pair.i > maxI {
+			maxI = pair.i
+		}
+		if pair.j > maxJ {
+			maxJ = pair.j
+		}
+	}
+	for i := 0; i <= maxI; i++ {
+		for j := 0; j <= maxJ; j++ {
+			pair := Pair{i, j}
+			if !r.plots[pair] {
+				continue
+			}
+
+			if !r.plots[Pair{i - 1, j}] {
+				if mark("u", i, j) {
+					count++
+				}
+			}
+			if !r.plots[Pair{i, j - 1}] {
+				if mark("l", i, j) {
+					count++
+				}
+			}
+			if !r.plots[Pair{i + 1, j}] {
+				if mark("d", i, j) {
+					count++
+				}
+			}
+			if !r.plots[Pair{i, j + 1}] {
+				if mark("r", i, j) {
+					count++
+				}
+			}
+		}
+	}
+	return count
 }
 
 func parsePuzzle(input string) [][]rune {
