@@ -2,13 +2,23 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
 )
 
 func main() {
+	f, err := os.Create("cpu.prof")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	content, err := os.ReadFile("input.txt")
 	if err != nil {
 		panic(err)
@@ -21,28 +31,46 @@ func main() {
 
 	start := time.Now()
 	curr := puzzle
-	for i := 0; i < 25; i++ {
-		working := make([]int, 0, len(curr))
-		for _, num := range curr {
-			if num == 0 {
-				working = append(working, 1)
-				continue
-			}
-			len := decimalLen(num)
-			if len%2 == 0 {
-				mid := decimalOfLen(1 + len/2)
-				working = append(working, num/mid)
-				working = append(working, num%mid)
-			} else {
-				working = append(working, num*2024)
-			}
-		}
-		curr = working
+
+	result := 0
+	for _, num := range curr {
+		result += blink(num, 75)
 	}
 
 	elapsed := time.Since(start)
 	fmt.Println("elapsed: ", elapsed)
-	fmt.Println("result: ", len(curr))
+	fmt.Println("result: ", result)
+}
+
+type Pair struct {
+	num       int
+	remainint int
+}
+
+var (
+	mem = make(map[Pair]int)
+)
+
+func blink(num int, remaining int) int {
+	if remaining == 0 {
+		return 1
+	}
+	if num == 0 {
+		return blink(1, remaining-1)
+	}
+	len := decimalLen(num)
+	if len%2 == 0 {
+		pair := Pair{num, remaining}
+		if mem[pair] != 0 {
+			return mem[pair]
+		}
+		mid := decimalOfLen(1 + len/2)
+		result := blink(num/mid, remaining-1) + blink(num%mid, remaining-1)
+		mem[pair] = result
+		return result
+	} else {
+		return blink(num*2024, remaining-1)
+	}
 }
 
 func decimalLen(num int) int {
@@ -52,7 +80,7 @@ func decimalLen(num int) int {
 	if num < 0 {
 		return decimalLen(-num)
 	}
-	for i := 3; i < 100; i++ {
+	for i := 2; i < 100; i++ {
 		if num < decimalOfLen(i) {
 			return i - 1
 		}
@@ -61,11 +89,7 @@ func decimalLen(num int) int {
 }
 
 func decimalOfLen(len int) int {
-	num := 1
-	for i := 1; i < len; i++ {
-		num *= 10
-	}
-	return num
+	return int(math.Pow10(len - 1))
 }
 
 func parsePuzzle(input string) ([]int, error) {
