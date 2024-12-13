@@ -12,6 +12,7 @@ import (
 const (
 	costA = 3
 	costB = 1
+	extra = 10000000000000
 )
 
 type Pair struct {
@@ -50,16 +51,30 @@ func (p *Puzzle) solve() int {
 		}
 		return l
 	}
+
 	bCount := min(p.prize.x/p.buttonB.x, p.prize.y/p.buttonB.y)
-	for ; bCount >= 0; bCount-- {
+	for bCount >= 0 {
 		xRemaining := p.prize.x - (bCount * p.buttonB.x)
 		yRemaining := p.prize.y - (bCount * p.buttonB.y)
 
-		if xRemaining%p.buttonA.x == 0 && yRemaining%p.buttonA.y == 0 {
-			if xRemaining/p.buttonA.x == yRemaining/p.buttonA.y {
+		xDiff := xRemaining % p.buttonA.x
+		yDiff := yRemaining % p.buttonA.y
+		aCountX := xRemaining / p.buttonA.x
+		aCountY := yRemaining / p.buttonA.y
+		if xDiff == 0 && yDiff == 0 {
+			if aCountX == aCountY {
 				return costB*bCount + costA*xRemaining/p.buttonA.x
 			}
 		}
+
+		aCountDiff := max(aCountX, aCountY) - min(aCountX, aCountY)
+		xStep := (aCountDiff * p.buttonA.x) / p.buttonB.x
+		yStep := (aCountDiff * p.buttonA.y) / p.buttonB.y
+		step := min(xStep, yStep)
+		if step == 0 {
+			step = 1
+		}
+		bCount -= step
 	}
 	return 0
 }
@@ -88,8 +103,8 @@ func parsePuzzle(input string) []Puzzle {
 		a := pattern.FindStringSubmatch(lines[i])
 		b := pattern.FindStringSubmatch(lines[i+1])
 		prize := pattern.FindStringSubmatch(lines[i+2])
-
-		puzzles = append(puzzles, Puzzle{parse(a), parse(b), parse(prize)})
+		prizePair := parse(prize)
+		puzzles = append(puzzles, Puzzle{parse(a), parse(b), Pair{prizePair.x + extra, prizePair.y + extra}})
 		i += 3
 	}
 	return puzzles
