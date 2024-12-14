@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"regexp"
@@ -36,33 +37,74 @@ func main() {
 	now := time.Now()
 
 	quadrants := []int{0, 0, 0, 0, 0}
-	positions := make(map[Pair]int)
 	for _, puzzle := range puzzle {
 		p := puzzle.findFuturePosition(100)
 		q := p.quadrant()
 		quadrants[q]++
-		positions[p]++
 	}
 	result := quadrants[1] * quadrants[2] * quadrants[3] * quadrants[4]
-
-	// for y := 0; y < spaceHigh; y++ {
-	// 	for x := 0; x < spaceWidth; x++ {
-	// 		p := Pair{x, y}
-	// 		if p.quadrant() == 0 {
-	// 			fmt.Printf(" ")
-	// 		} else if positions[p] != 0 {
-	// 			// fmt.Printf("%d", positions[p])
-	// 			fmt.Printf("%d", p.quadrant())
-	// 		} else {
-	// 			fmt.Printf(".")
-	// 		}
-	// 	}
-	// 	fmt.Println()
-	// }
-
 	elapsed := time.Since(now)
 	fmt.Println("Elapsed: ", elapsed)
 	fmt.Println("Result: ", result)
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for i := 0; i < 100000; i++ {
+		positions := make(map[Pair]bool)
+
+		xMin := spaceWidth / 3
+		xMax := spaceWidth - xMin
+		yMin := spaceHigh / 3
+		yMax := spaceHigh - yMin
+		treshold := int(float64(len(puzzle)) * 0.50)
+
+		count := 0
+		for _, puzzle := range puzzle {
+			p := puzzle.findFuturePosition(i)
+			positions[p] = true
+
+			if p.x > xMin && p.x < xMax && yMin < p.y && yMax > p.y {
+				count++
+			}
+		}
+		if count < treshold {
+			continue
+		}
+		for y := 0; y < spaceHigh; y++ {
+			for x := 0; x < spaceWidth; x++ {
+				p := Pair{x, y}
+				if positions[p] {
+					fmt.Printf("X")
+				} else {
+					fmt.Printf(".")
+				}
+			}
+			fmt.Println()
+		}
+		fmt.Println("i:", i)
+		fmt.Println()
+		fmt.Println()
+		scanner.Scan()
+	}
+}
+
+func isPossibleTree(positions map[Pair]bool) bool {
+	for x := 0; x < 5; x++ {
+		for y := 0; y < 5; y++ {
+			if positions[Pair{x, y}] {
+				return false
+			}
+			if positions[Pair{x, spaceHigh - y}] {
+				return false
+			}
+			if positions[Pair{spaceWidth - x, y}] {
+				return false
+			}
+			if positions[Pair{spaceWidth - x, spaceHigh - y}] {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (r *Robot) findFuturePosition(steps int) Pair {
