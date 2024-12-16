@@ -19,6 +19,7 @@ type Route struct {
 	j    int
 	d    rune
 	cost int
+	path map[Pair]bool
 }
 
 type Routes struct {
@@ -42,43 +43,71 @@ func main() {
 
 func (p Puzzle) solve() {
 	i, j := startPoisition(p)
-	mem := make(map[Pair]bool)
-	route := Route{i, j, '>', 0}
+	m := make(map[Pair]bool)
+	m[Pair{i, j}] = true
+	route := Route{i, j, '>', 0, m}
 	routes := &Routes{[]Route{}, 0}
 
-	for p[route.i][route.j] != 'E' {
-		route = next(p, route, routes, mem)
+	lowestCost := -1
+	found := []Route{}
+	for {
+		route = next(p, route, routes)
+		if p[route.i][route.j] == 'E' {
+			if lowestCost == -1 {
+				lowestCost = route.cost
+			}
+			if lowestCost == route.cost {
+				found = append(found, route)
+			} else {
+				break
+			}
+		}
 	}
-	fmt.Println("Route: ", route.cost)
+	fmt.Println("Route: ", lowestCost)
+	fmt.Println("Found: ", len(found))
+
+	distinct := make(map[Pair]bool)
+	for _, f := range found {
+		for k, v := range f.path {
+			distinct[k] = v
+		}
+	}
+	fmt.Println("Result: ", len(distinct))
 }
 
-func next(p Puzzle, r Route, routes *Routes, mem map[Pair]bool) Route {
+func next(p Puzzle, r Route, routes *Routes) Route {
 	applicable := func(incI, incJ int) bool {
 		i := r.i + incI
 		j := r.j + incJ
-		test := p[i][j] != '#' && !mem[Pair{i, j}]
+
+		test := p[i][j] != '#' && !r.path[Pair{i, j}]
 		return test
 	}
-	mem[Pair{r.i, r.j}] = true
 
 	d := r.clockwise()
 	incI, incJ := increments(d)
 	if applicable(incI, incJ) {
-		route := Route{r.i + incI, r.j + incJ, d, r.cost + 1001}
+		f := r.fork()
+		f[Pair{r.i + incI, r.j + incJ}] = true
+		route := Route{r.i + incI, r.j + incJ, d, r.cost + 1001, f}
 		routes.add(route)
 	}
 
 	d = r.counterClockwise()
 	incI, incJ = increments(d)
 	if applicable(incI, incJ) {
-		route := Route{r.i + incI, r.j + incJ, d, r.cost + 1001}
+		f := r.fork()
+		f[Pair{r.i + incI, r.j + incJ}] = true
+		route := Route{r.i + incI, r.j + incJ, d, r.cost + 1001, f}
 		routes.add(route)
 	}
 
 	d = r.opposite()
 	incI, incJ = increments(d)
 	if applicable(incI, incJ) {
-		route := Route{r.i + incI, r.j + incJ, d, r.cost + 2002}
+		f := r.fork()
+		f[Pair{r.i + incI, r.j + incJ}] = true
+		route := Route{r.i + incI, r.j + incJ, d, r.cost + 2002, f}
 		routes.add(route)
 	}
 
@@ -87,6 +116,7 @@ func next(p Puzzle, r Route, routes *Routes, mem map[Pair]bool) Route {
 		r.i += incI
 		r.j += incJ
 		r.cost++
+		r.path[Pair{r.i, r.j}] = true
 		if routes.hasCheaper(r) {
 			routes.add(r)
 			return routes.cheapest()
@@ -132,6 +162,14 @@ func (r *Routes) findCheapest() {
 		}
 	}
 	r.ci = ci
+}
+
+func (r *Route) fork() map[Pair]bool {
+	fork := make(map[Pair]bool)
+	for k, v := range r.path {
+		fork[k] = v
+	}
+	return fork
 }
 
 func (r *Route) clockwise() rune {
