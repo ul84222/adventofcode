@@ -51,7 +51,6 @@ func (p Puzzle) solve() {
 
 	lowestCost := -1
 	found := []Route{}
-	// foo := 0
 	for {
 		route = next(p, route, routes)
 		if route == nil {
