@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"time"
@@ -43,21 +44,25 @@ func main() {
 
 func (p Puzzle) solve() {
 	i, j := startPoisition(p)
-	m := make(map[Pair]bool)
+	m := make(map[Pair]bool, 100)
 	m[Pair{i, j}] = true
-	route := Route{i, j, '>', 0, m}
+	route := &Route{i, j, '>', 0, m}
 	routes := &Routes{[]Route{}, 0}
 
 	lowestCost := -1
 	found := []Route{}
+	// foo := 0
 	for {
 		route = next(p, route, routes)
+		if route == nil {
+			break
+		}
 		if p[route.i][route.j] == 'E' {
 			if lowestCost == -1 {
 				lowestCost = route.cost
 			}
 			if lowestCost == route.cost {
-				found = append(found, route)
+				found = append(found, *route)
 			} else {
 				break
 			}
@@ -75,7 +80,20 @@ func (p Puzzle) solve() {
 	fmt.Println("Result: ", len(distinct))
 }
 
-func next(p Puzzle, r Route, routes *Routes) Route {
+type Key struct {
+	pair Pair
+	d    rune
+}
+
+var mem = make(map[Key]int)
+
+func next(p Puzzle, r *Route, routes *Routes) *Route {
+	key := Key{Pair{r.i, r.j}, r.d}
+	if mem[key] != 0 && mem[key] < r.cost {
+		return routes.cheapest()
+	}
+	mem[key] = r.cost
+
 	applicable := func(incI, incJ int) bool {
 		i := r.i + incI
 		j := r.j + incJ
@@ -118,7 +136,7 @@ func next(p Puzzle, r Route, routes *Routes) Route {
 		r.cost++
 		r.path[Pair{r.i, r.j}] = true
 		if routes.hasCheaper(r) {
-			routes.add(r)
+			routes.add(*r)
 			return routes.cheapest()
 		} else {
 			return r
@@ -143,14 +161,17 @@ func (r *Routes) add(route Route) {
 	}
 }
 
-func (r *Routes) cheapest() Route {
+func (r *Routes) cheapest() *Route {
+	if len(r.routes) == 0 {
+		return nil
+	}
 	res := r.routes[r.ci]
 	r.routes = append(r.routes[:r.ci], r.routes[r.ci+1:]...)
 	r.findCheapest()
-	return res
+	return &res
 }
 
-func (r *Routes) hasCheaper(route Route) bool {
+func (r *Routes) hasCheaper(route *Route) bool {
 	return len(r.routes) > 0 && r.routes[r.ci].cost < route.cost
 }
 
@@ -165,11 +186,7 @@ func (r *Routes) findCheapest() {
 }
 
 func (r *Route) fork() map[Pair]bool {
-	fork := make(map[Pair]bool)
-	for k, v := range r.path {
-		fork[k] = v
-	}
-	return fork
+	return maps.Clone(r.path)
 }
 
 func (r *Route) clockwise() rune {
