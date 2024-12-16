@@ -30,6 +30,7 @@ func main() {
 	puzzle := parsePuzzle(input)
 	now := time.Now()
 
+	puzzle.wide()
 	puzzle.applyMoves()
 	puzzle.printMap()
 	elapsed := time.Since(now)
@@ -37,9 +38,33 @@ func main() {
 	fmt.Println("Coordinate: ", puzzle.coordinates())
 }
 
+func (p *Puzzle) wide() {
+	wideRoom := make([][]rune, 0, len(p.room))
+	for _, l := range p.room {
+		wideL := make([]rune, 0, len(p.room)*2)
+		for _, r := range l {
+			switch r {
+			case '#':
+				wideL = append(wideL, '#', '#')
+			case 'O':
+				wideL = append(wideL, '[', ']')
+			case '.':
+				wideL = append(wideL, '.', '.')
+			case '@':
+				wideL = append(wideL, '@', '.')
+			default:
+				panic(fmt.Errorf("unknown rune: %v", r))
+			}
+		}
+		wideRoom = append(wideRoom, wideL)
+	}
+	p.room = wideRoom
+	p.currI, p.currJ = findCurrPosition(p.room)
+}
+
 func (p *Puzzle) applyMoves() {
+	p.printMap()
 	for _, m := range p.moves {
-		// fmt.Printf("Move: >%v<\n", string(m))
 		switch m {
 		case '^':
 			p.move(-1, 0)
@@ -58,28 +83,90 @@ func (p *Puzzle) applyMoves() {
 func (p *Puzzle) move(incI, incJ int) bool {
 	i := p.currI + incI
 	j := p.currJ + incJ
-	isWallMoved := false
 
+	obstacles := 0
 	for ; p.room[i][j] != '#' && p.room[i][j] != '.'; i, j = i+incI, j+incJ {
-		if p.room[i][j] == 'O' {
-			isWallMoved = true
-		}
+		obstacles++
 	}
-
 	if p.room[i][j] == '#' {
 		return false
 	}
 
-	if isWallMoved {
-		p.room[i][j] = 'O'
+	if obstacles == 0 {
+		p.room[p.currI][p.currJ] = '.'
+		p.currI += incI
+		p.currJ += incJ
+		p.room[p.currI][p.currJ] = '@'
+		return true
 	}
-	p.room[p.currI][p.currJ] = '.'
 
-	p.currI += incI
-	p.currJ += incJ
-	p.room[p.currI][p.currJ] = '@'
+	if incJ != 0 {
+		for ; j != p.currJ; j -= incJ {
+			p.room[p.currI][j] = p.room[p.currI][j-incJ]
+		}
+		p.room[p.currI][p.currJ] = '.'
+		p.currI += incI
+		p.currJ += incJ
+		p.room[p.currI][p.currJ] = '@'
+		return true
+	}
+	if incI != 0 {
+		mem := make(map[Pair]bool)
+		canMove := verticalPush(p.room, p.currI+incI, p.currJ, incI, true, mem)
+		if canMove {
+			clear(mem)
+			verticalPush(p.room, p.currI+incI, p.currJ, incI, false, mem)
 
-	return true
+			p.room[p.currI][p.currJ] = '.'
+			p.currI += incI
+			p.currJ += incJ
+			p.room[p.currI][p.currJ] = '@'
+			return true
+		}
+		return false
+	}
+	panic(fmt.Errorf("Unreachable state"))
+}
+
+func verticalPush(m [][]rune, i, j, incI int, dryRun bool, mem map[Pair]bool) bool {
+	if m[i][j] == ']' {
+		j--
+	}
+
+	if mem[Pair{i, j}] {
+		return true
+	} else {
+		mem[Pair{i, j}] = true
+	}
+
+	nextI := i + incI
+	if m[nextI][j] == '#' || m[nextI][j+1] == '#' {
+		return false
+	}
+	if m[nextI][j] == '.' && m[nextI][j+1] == '.' {
+		if dryRun {
+			return true
+		}
+		m[nextI][j] = '['
+		m[nextI][j+1] = ']'
+		m[i][j] = '.'
+		m[i][j+1] = '.'
+
+		return true
+	}
+	leftMoved := m[nextI][j] == '.' || verticalPush(m, nextI, j, incI, dryRun, mem)
+	rightMoved := m[nextI][j+1] == '.' || verticalPush(m, nextI, j+1, incI, dryRun, mem)
+	if leftMoved && rightMoved {
+		if dryRun {
+			return true
+		}
+		m[nextI][j] = '['
+		m[nextI][j+1] = ']'
+		m[i][j] = '.'
+		m[i][j+1] = '.'
+		return true
+	}
+	return false
 }
 
 func (p *Puzzle) printMap() {
@@ -92,7 +179,7 @@ func (p *Puzzle) coordinates() int {
 	result := 0
 	for i := 0; i < len(p.room); i++ {
 		for j := 0; j < len(p.room[i]); j++ {
-			if p.room[i][j] == 'O' {
+			if p.room[i][j] == '[' {
 				result += 100*i + j
 			}
 
