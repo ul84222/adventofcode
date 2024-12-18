@@ -37,19 +37,22 @@ func main() {
 	input := string(content)
 	corruptions := parse(input)
 
-	// show(corruptions, frame)
-
-	p := shortestPath(corruptions)
+	for i := len(corruptions) - 1; i > 0; i-- {
+		p := shortestPath(corruptions, i)
+		if p != nil {
+			fmt.Println("i:", i)
+			break
+		}
+	}
 	fmt.Println()
-	fmt.Println("steps: ", p.steps)
-
+	// fmt.Println("steps: ", p.steps)
 }
 
 type Key struct {
 	x, y int
 }
 
-func shortestPath(corruptions map[Pair]int) Path {
+func shortestPath(corruptions map[Pair]int, frame int) *Path {
 	mem := make(map[Key]bool)
 	safe := func(x, y int) bool {
 		cr := corruptions[Pair{x, y}]
@@ -71,29 +74,29 @@ func shortestPath(corruptions map[Pair]int) Path {
 		return &p
 	}
 
-	curr := Path{0, 0, '>', 0, 0}
+	curr := &Path{0, 0, '>', 0, 0}
 	paths := Paths{[]Path{}, 0}
-	for curr.x != (maxX-1) || curr.y != (maxY-1) {
+	for curr != nil && (curr.x != (maxX-1) || curr.y != (maxY-1)) {
 		mem[Key{curr.x, curr.y}] = true
 
-		n := next(curr, left(curr.d))
+		n := next(*curr, left(curr.d))
 		if n != nil {
 			paths.add(*n)
 		}
 
-		n = next(curr, right(curr.d))
+		n = next(*curr, right(curr.d))
 		if n != nil {
 			paths.add(*n)
 		}
 
-		n = next(curr, curr.d)
+		n = next(*curr, curr.d)
 		if n == nil {
-			curr = *paths.cheapest()
+			curr = paths.cheapest()
 		} else if paths.hasCheaper(*n) {
 			paths.add(*n)
-			curr = *paths.cheapest()
+			curr = paths.cheapest()
 		} else {
-			curr = *n
+			curr = n
 		}
 	}
 	return curr
