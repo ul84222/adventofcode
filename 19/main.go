@@ -17,39 +17,36 @@ func main() {
 	count := 0
 	for _, d := range puzzle.designs {
 		mem := make(Mem)
-		if isPossible(puzzle, d, mem) {
-			count++
-		}
+		count += possibleWays(puzzle, d, mem)
 	}
 	fmt.Println("Found: ", count)
 }
 
-func isPossible(p Puzzle, design []rune, mem Mem) bool {
+func possibleWays(p Puzzle, design []rune, mem Mem) int {
 	if len(design) == 0 {
-		return true
+		return 1
 	}
 
-	if mem[string(design)] {
-		return false
+	if mem[string(design)] != 0 {
+		return mem[string(design)] - 1
 	}
 
 	applicable := p.towels[design[0]]
 	if applicable == nil {
-		mem[string(design)] = true
-		return false
+		mem[string(design)] = 1
+		return 0
 	}
 
+	count := 0
 	for _, it := range applicable {
 		if !isPrefix(design, it) {
 			continue
 		}
 
-		if isPossible(p, design[len(it):], mem) {
-			return true
-		}
+		count += possibleWays(p, design[len(it):], mem)
 	}
-	mem[string(design)] = true
-	return false
+	mem[string(design)] = count + 1
+	return count
 }
 
 func isPrefix(base []rune, prefix []rune) bool {
@@ -65,7 +62,7 @@ func isPrefix(base []rune, prefix []rune) bool {
 	return true
 }
 
-type Mem map[string]bool
+type Mem map[string]int
 
 type Towel []rune
 
