@@ -33,15 +33,14 @@ func main() {
 	input := string(content)
 	puzzle := parse(input)
 
-	p := puzzle.shortestPath(false, -1)[0]
+	p := puzzle.shortestPath()
 	fmt.Println("shortest: ", p.steps)
-
-	r := puzzle.shortestPath(true, p.cost-12)
-	fmt.Println("cheat shortest: ", len(r))
+	fmt.Println("cheat opportunities: ", puzzle.cheatOpportunities(p, p.cost-100))
 }
 
-func (puzzle Map) shortestPath(cheat bool, lte int) []Path {
+func (puzzle Map) shortestPath() *Path {
 	paths := Paths{[]Path{}, 0}
+	mem := make(map[Pair]bool)
 
 	safe := func(i, j int) bool {
 		if i < 0 || j < 0 || i >= len(puzzle) || j >= len(puzzle[i]) {
@@ -54,14 +53,10 @@ func (puzzle Map) shortestPath(cheat bool, lte int) []Path {
 	}
 	next := func(p *Path, incI, incJ int) *Path {
 		i, j := p.i+incI, p.j+incJ
-		if p.mem[Pair{i, j}] != 0 {
+		if mem[Pair{i, j}] {
 			return nil
 		}
 		if !safe(i, j) {
-			if cheat && !p.cheated && safe(i+incI, j+incJ) {
-				n := Path{i + incI, j + incJ, p.cost + 2, p.steps + 2, true, copy(p.mem)}
-				return &n
-			}
 			return nil
 		}
 		n := Path{i, j, p.cost + 1, p.steps + 1, p.cheated, copy(p.mem)}
@@ -78,23 +73,9 @@ func (puzzle Map) shortestPath(cheat bool, lte int) []Path {
 	endI, endJ := puzzle.end()
 	curr := &Path{startI, startJ, 0, 0, false, make(map[Pair]int)}
 
-	t := make([]Path, 0, 1)
-	for curr != nil {
-		if curr.i == endI && curr.j == endJ {
-			if lte == -1 {
-				t = append(t, *curr)
-				return t
-			}
-			if lte >= curr.cost {
-				t = append(t, *curr)
-				curr = paths.cheapest()
-				continue
-			} else {
-				return t
-			}
-		}
-
+	for curr != nil && (curr.i != endI || curr.j != endJ) {
 		curr.mem[Pair{curr.i, curr.j}] = curr.cost
+		mem[Pair{curr.i, curr.j}] = true
 
 		scheduleNext(curr, 1, 0)
 		scheduleNext(curr, -1, 0)
@@ -103,7 +84,35 @@ func (puzzle Map) shortestPath(cheat bool, lte int) []Path {
 
 		curr = paths.cheapest()
 	}
-	return t
+	curr.mem[Pair{curr.i, curr.j}] = curr.cost
+	return curr
+}
+
+func (puzzle Map) cheatOpportunities(p *Path, lte int) int {
+	count := 0
+	cheatCost := func(pair Pair, cost, incI, incJ int) int {
+		nextCost := p.mem[Pair{pair.i + incI, pair.j + incJ}]
+		if nextCost == 0 {
+			return -1
+		}
+		if nextCost < cost {
+			return -1
+		}
+		return p.cost - (nextCost - cost) + 2
+	}
+	process := func(pair Pair, cost, incI, incJ int) {
+		c := cheatCost(pair, cost, incI, incJ)
+		if c != -1 && c <= lte {
+			count++
+		}
+	}
+	for it, cost := range p.mem {
+		process(it, cost, 2, 0)
+		process(it, cost, -2, 0)
+		process(it, cost, 0, 2)
+		process(it, cost, 0, -2)
+	}
+	return count
 }
 
 func copy(mem map[Pair]int) map[Pair]int {
@@ -130,7 +139,7 @@ func (m Map) position(r rune) (int, int) {
 			}
 		}
 	}
-	panic("cant find " + string(r) + "in map")
+	panic("cant find " + string(r) + " in map")
 }
 
 func (r *Paths) add(p Path) {
@@ -166,7 +175,7 @@ func (r *Paths) hasCheaper(p Path) bool {
 
 func parse(input string) Map {
 	lines := strings.Split(input, "\n")
-	m := make(Map, len(lines))
+	m := make(Map, 0, len(lines))
 
 	for _, line := range lines {
 		if line == "" {
