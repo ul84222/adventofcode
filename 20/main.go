@@ -20,10 +20,24 @@ type Path struct {
 	mem     map[Pair]int
 }
 
+type Task struct {
+	p       Path
+	attempt int
+}
+
 type Paths struct {
 	paths []Path
 	ci    int
 }
+
+const (
+	// shouldSaveAtLeast = 74
+	shouldSaveAtLeast = 100
+	// shouldSaveAtLeast = 72
+	cheatMaxTime = 20
+	// shouldSaveAtLeast = 64
+	// cheatMaxTime      = 1
+)
 
 func main() {
 	content, err := os.ReadFile("input.txt")
@@ -35,9 +49,11 @@ func main() {
 
 	p := puzzle.shortestPath()
 	fmt.Println("shortest: ", p.steps)
-	fmt.Println("cheat opportunities: ", puzzle.cheatOpportunities(p, p.cost-100))
+	fmt.Println("cheat opportunities: ", puzzle.cheatOpportunities(p, p.cost-shouldSaveAtLeast))
 }
 
+// too low - 9428
+// too high 1433001
 func (puzzle Map) shortestPath() *Path {
 	paths := Paths{[]Path{}, 0}
 	mem := make(map[Pair]bool)
@@ -90,33 +106,85 @@ func (puzzle Map) shortestPath() *Path {
 
 func (puzzle Map) cheatOpportunities(p *Path, lte int) int {
 	count := 0
-	cheatCost := func(pair Pair, cost, incI, incJ int) int {
-		nextCost := p.mem[Pair{pair.i + incI, pair.j + incJ}]
-		if nextCost == 0 {
-			return -1
-		}
-		if nextCost < cost {
-			return -1
-		}
-		return p.cost - (nextCost - cost) + 2
-	}
-	process := func(pair Pair, cost, incI, incJ int) {
-		c := cheatCost(pair, cost, incI, incJ)
-		if c != -1 && c <= lte {
-			count++
-		}
-	}
 	for it, cost := range p.mem {
-		process(it, cost, 2, 0)
-		process(it, cost, -2, 0)
-		process(it, cost, 0, 2)
-		process(it, cost, 0, -2)
+		dest := make(map[Pair]int)
+		seen := make(map[Pair]bool)
+		seen[it] = true
+		// puzzle.process(p, Pair{it.i + 1, it.j}, cost, lte, 0, dest, seen)
+		// puzzle.process(p, Pair{it.i - 1, it.j}, cost, lte, 0, dest, seen)
+		// puzzle.process(p, Pair{it.i, it.j + 1}, cost, lte, 0, dest, seen)
+		// puzzle.process(p, Pair{it.i, it.j - 1}, cost, lte, 0, dest, seen)
+
+		puzzle.process(p, Pair{it.i + 1, it.j}, cost, lte, 0, dest, it)
+		puzzle.process(p, Pair{it.i - 1, it.j}, cost, lte, 0, dest, it)
+		puzzle.process(p, Pair{it.i, it.j + 1}, cost, lte, 0, dest, it)
+		puzzle.process(p, Pair{it.i, it.j - 1}, cost, lte, 0, dest, it)
+		for _, c := range dest {
+			if c <= lte {
+				count++
+			}
+
+		}
+		// count += len(dest)
 	}
 	return count
 }
 
+func (puzzle Map) process(p *Path, pair Pair, initialCost, lte, attempt int, dest map[Pair]int, seen map[Pair]bool) {
+	// func (puzzle Map) process(p *Path, pair Pair, initialCost, lte, attempt int, dest map[Pair]int, prev Pair) {
+	// if seen[pair] {
+	// 	return
+	// }
+	// seen[pair] = true
+
+	if attempt > cheatMaxTime {
+		return
+	}
+
+	if pair.i < 0 || pair.j < 0 || pair.i >= len(puzzle) || pair.j >= len(puzzle[pair.i]) {
+		return
+	}
+
+	endCost, found := p.mem[pair]
+	if found {
+		newCost := p.cost - (endCost - initialCost - 1 - attempt)
+		if curr := dest[pair]; curr == 0 || curr > newCost {
+			// fmt.Printf("FOUND: initialCost %v cost %v p.cost %v newCost %v\n", initialCost, endCost, p.cost, newCost)
+			dest[pair] = newCost
+		}
+		// }
+		return
+	}
+
+	// if prev.i != pair.i+1 {
+	// 	puzzle.process(p, Pair{pair.i + 1, pair.j}, initialCost, lte, attempt+1, dest, pair)
+	// }
+	// if prev.i != pair.i-1 {
+	// 	puzzle.process(p, Pair{pair.i - 1, pair.j}, initialCost, lte, attempt+1, dest, pair)
+	// }
+	// if prev.j != pair.j+1 {
+	// 	puzzle.process(p, Pair{pair.i, pair.j + 1}, initialCost, lte, attempt+1, dest, pair)
+	// }
+	// if prev.j != pair.j-1 {
+	// 	puzzle.process(p, Pair{pair.i, pair.j - 1}, initialCost, lte, attempt+1, dest, pair)
+	// }
+
+	// puzzle.process(p, Pair{pair.i + 1, pair.j}, initialCost, lte, attempt+1, dest, copyB(seen))
+	// puzzle.process(p, Pair{pair.i - 1, pair.j}, initialCost, lte, attempt+1, dest, copyB(seen))
+	// puzzle.process(p, Pair{pair.i, pair.j + 1}, initialCost, lte, attempt+1, dest, copyB(seen))
+	// puzzle.process(p, Pair{pair.i, pair.j - 1}, initialCost, lte, attempt+1, dest, copyB(seen))
+}
+
 func copy(mem map[Pair]int) map[Pair]int {
 	c := make(map[Pair]int, len(mem))
+	for k, v := range mem {
+		c[k] = v
+	}
+	return c
+}
+
+func copyB(mem map[Pair]bool) map[Pair]bool {
+	c := make(map[Pair]bool, len(mem))
 	for k, v := range mem {
 		c[k] = v
 	}
