@@ -21,8 +21,9 @@ type Path struct {
 }
 
 type Task struct {
-	p       Path
+	p       Pair
 	attempt int
+	seen    map[Pair]bool
 }
 
 type Paths struct {
@@ -31,12 +32,8 @@ type Paths struct {
 }
 
 const (
-	// shouldSaveAtLeast = 74
 	shouldSaveAtLeast = 100
-	// shouldSaveAtLeast = 72
-	cheatMaxTime = 20
-	// shouldSaveAtLeast = 64
-	// cheatMaxTime      = 1
+	maxCheatAttempts  = 20
 )
 
 func main() {
@@ -51,9 +48,6 @@ func main() {
 	fmt.Println("shortest: ", p.steps)
 	fmt.Println("cheat opportunities: ", puzzle.cheatOpportunities(p, p.cost-shouldSaveAtLeast))
 }
-
-// too low - 9428
-// too high 1433001
 func (puzzle Map) shortestPath() *Path {
 	paths := Paths{[]Path{}, 0}
 	mem := make(map[Pair]bool)
@@ -101,45 +95,52 @@ func (puzzle Map) shortestPath() *Path {
 		curr = paths.cheapest()
 	}
 	curr.mem[Pair{curr.i, curr.j}] = curr.cost
+
 	return curr
 }
+
+var tasks = []Task{}
 
 func (puzzle Map) cheatOpportunities(p *Path, lte int) int {
 	count := 0
 	for it, cost := range p.mem {
-		dest := make(map[Pair]int)
 		seen := make(map[Pair]bool)
+		dest := make(map[Pair]int)
 		seen[it] = true
-		// puzzle.process(p, Pair{it.i + 1, it.j}, cost, lte, 0, dest, seen)
-		// puzzle.process(p, Pair{it.i - 1, it.j}, cost, lte, 0, dest, seen)
-		// puzzle.process(p, Pair{it.i, it.j + 1}, cost, lte, 0, dest, seen)
-		// puzzle.process(p, Pair{it.i, it.j - 1}, cost, lte, 0, dest, seen)
 
-		puzzle.process(p, Pair{it.i + 1, it.j}, cost, lte, 0, dest, it)
-		puzzle.process(p, Pair{it.i - 1, it.j}, cost, lte, 0, dest, it)
-		puzzle.process(p, Pair{it.i, it.j + 1}, cost, lte, 0, dest, it)
-		puzzle.process(p, Pair{it.i, it.j - 1}, cost, lte, 0, dest, it)
+		tasks = append(tasks, Task{Pair{it.i + 1, it.j}, 1, seen})
+		tasks = append(tasks, Task{Pair{it.i - 1, it.j}, 1, seen})
+		tasks = append(tasks, Task{Pair{it.i, it.j + 1}, 1, seen})
+		tasks = append(tasks, Task{Pair{it.i, it.j - 1}, 1, seen})
+
+		for len(tasks) != 0 {
+			task := tasks[0]
+			tasks = tasks[1:]
+
+			puzzle.process(p, task, cost, dest)
+		}
+
 		for _, c := range dest {
 			if c <= lte {
 				count++
 			}
-
 		}
-		// count += len(dest)
 	}
+
 	return count
 }
 
-func (puzzle Map) process(p *Path, pair Pair, initialCost, lte, attempt int, dest map[Pair]int, seen map[Pair]bool) {
-	// func (puzzle Map) process(p *Path, pair Pair, initialCost, lte, attempt int, dest map[Pair]int, prev Pair) {
-	// if seen[pair] {
-	// 	return
-	// }
-	// seen[pair] = true
+func (puzzle Map) process(p *Path, task Task, initialCost int, dest map[Pair]int) {
+	pair := task.p
 
-	if attempt > cheatMaxTime {
+	if task.attempt > maxCheatAttempts {
 		return
 	}
+
+	if task.seen[pair] {
+		return
+	}
+	task.seen[pair] = true
 
 	if pair.i < 0 || pair.j < 0 || pair.i >= len(puzzle) || pair.j >= len(puzzle[pair.i]) {
 		return
@@ -147,44 +148,20 @@ func (puzzle Map) process(p *Path, pair Pair, initialCost, lte, attempt int, des
 
 	endCost, found := p.mem[pair]
 	if found {
-		newCost := p.cost - (endCost - initialCost - 1 - attempt)
-		if curr := dest[pair]; curr == 0 || curr > newCost {
-			// fmt.Printf("FOUND: initialCost %v cost %v p.cost %v newCost %v\n", initialCost, endCost, p.cost, newCost)
+		newCost := initialCost + (p.cost - endCost) + task.attempt
+		if curr, found := dest[pair]; !found || curr > newCost {
 			dest[pair] = newCost
 		}
-		// }
-		return
 	}
 
-	// if prev.i != pair.i+1 {
-	// 	puzzle.process(p, Pair{pair.i + 1, pair.j}, initialCost, lte, attempt+1, dest, pair)
-	// }
-	// if prev.i != pair.i-1 {
-	// 	puzzle.process(p, Pair{pair.i - 1, pair.j}, initialCost, lte, attempt+1, dest, pair)
-	// }
-	// if prev.j != pair.j+1 {
-	// 	puzzle.process(p, Pair{pair.i, pair.j + 1}, initialCost, lte, attempt+1, dest, pair)
-	// }
-	// if prev.j != pair.j-1 {
-	// 	puzzle.process(p, Pair{pair.i, pair.j - 1}, initialCost, lte, attempt+1, dest, pair)
-	// }
-
-	// puzzle.process(p, Pair{pair.i + 1, pair.j}, initialCost, lte, attempt+1, dest, copyB(seen))
-	// puzzle.process(p, Pair{pair.i - 1, pair.j}, initialCost, lte, attempt+1, dest, copyB(seen))
-	// puzzle.process(p, Pair{pair.i, pair.j + 1}, initialCost, lte, attempt+1, dest, copyB(seen))
-	// puzzle.process(p, Pair{pair.i, pair.j - 1}, initialCost, lte, attempt+1, dest, copyB(seen))
+	tasks = append(tasks, Task{Pair{pair.i + 1, pair.j}, task.attempt + 1, task.seen})
+	tasks = append(tasks, Task{Pair{pair.i - 1, pair.j}, task.attempt + 1, task.seen})
+	tasks = append(tasks, Task{Pair{pair.i, pair.j + 1}, task.attempt + 1, task.seen})
+	tasks = append(tasks, Task{Pair{pair.i, pair.j - 1}, task.attempt + 1, task.seen})
 }
 
 func copy(mem map[Pair]int) map[Pair]int {
 	c := make(map[Pair]int, len(mem))
-	for k, v := range mem {
-		c[k] = v
-	}
-	return c
-}
-
-func copyB(mem map[Pair]bool) map[Pair]bool {
-	c := make(map[Pair]bool, len(mem))
 	for k, v := range mem {
 		c[k] = v
 	}
